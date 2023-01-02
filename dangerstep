@@ -1,0 +1,277 @@
+#!/bin/bash
+
+#################################
+#functions
+#################################
+Instructions () {
+echo
+echo
+echo "#-#-#-#-#-# INSTRUCTIONS #-#-#-#-#-#"
+echo
+echo "Dangerstep -- a game for one player at a time."
+echo "You are going to see a grid of numbers, with an X in the middle."
+echo "The X is your location. You move in any direction using the assigned keys."
+echo
+echo "Here is how you move on the grid. The cardinal points are up, down, left and right. The diagonals are north, south, west and east."
+echo "The letters that move you are simply u,d,l,r,n,s,w and e. Capital letters work just as lower case ones do."
+echo "For the diagonals, think of the compass being turned a bit counter-clockwise. Once you get the hang of it, you'll know the directions."
+echo "Here is a diagram:"
+echo
+echo
+echo "               n  u  e"
+echo "                \ | /"
+echo "              l-- X --r"
+echo "                / | \ "
+echo "               w  d  s"
+echo
+echo "Press the "h" key for a repeat of these instructions in the game."
+echo
+echo "   ***      The first number in the direction you choose is how far you go.        ***"
+echo
+echo "As the numbers disappear, they are added to your score. Your current location is the X, again."
+echo "If you step on your own path or go off the grid, the game ends."
+echo "Note that you can cross your path diagonally if you are careful and clever (and lucky)."
+echo
+echo "During the game you can press q to quit or h to read these instructions again."
+echo
+
+read -n 1 -a dummy -p "Now press Enter to begin.  "
+echo
+}
+
+
+Make_Grid () #only runs once per game
+{
+#create a 30x60 grid without zeros ${string:position:length}
+for (( x=0;x<=30;x++ ))
+do
+#added "123456789" to the end because a line came up short! 
+line="$RANDOM$RANDOM$RANDOM$RANDOM$RANDOM$RANDOM$RANDOM$RANDOM$RANDOM$RANDOM$RANDOM$RANDOM$RANDOM$RANDOM$RANDOM$RANDOM$RANDOM$RANDOM$RANDOM$RANDOM$RANDOM$RANDOM$RANDOM"
+line=${line//0/}  #remove zeros
+lines[$x]="${line:0:80}"
+done
+}
+
+Draw_Grid () {
+#make an X at current location
+start_string=${lines[$locationx]:0:$((locationy))}
+end_string=${lines[$locationx]:$((locationy+1)):79}
+#redX=$(echo -e '\e[31;1m'X'\e[39;49m')
+lines[$locationx]=$start_string"X"$end_string
+
+clear
+for (( x=0;x<=30;x++ ))
+do
+echo ${lines[$x]}
+done
+echo
+echo "Your score is: $score"
+}
+
+Get_Location_Value () {     #gets the number at the given location and adds it to the score
+location_value=`echo ${lines[$locationx]:$locationy:1}`
+
+if [ $location_value = "." ]
+then
+echo "Game over. You crossed your path."
+read -a dummy -p "Press any key to continue."
+Game_Over
+break
+fi
+
+#add $location_value to score, always
+score=$((score+location_value))
+}
+
+Make_Move () {
+#make a dot at current location (currently an X)
+start_string=${lines[$locationx]:0:$((locationy))}
+end_string=${lines[$locationx]:$((locationy+1)):79}
+lines[$locationx]=$start_string"."$end_string
+
+#move the location
+case "$direction" in
+            "North")
+		locationx=$((locationx-1));;  #Up
+            "South")
+		locationx=$((locationx+1));;  #Down
+            "East")
+		locationy=$((locationy+1));;   #Right
+            "West")
+		locationy=$((locationy-1));;   #Left
+            "Northeast")
+		locationx=$((locationx-1))
+		locationy=$((locationy+1));;  #PgUp
+            "Southeast")
+		locationx=$((locationx+1))
+		locationy=$((locationy+1));;  #PgDown
+            "Northwest")
+		locationx=$((locationx-1))
+		locationy=$((locationy-1));;     #Home [also F7(?)]
+            "Southwest")
+		locationx=$((locationx+1))
+		locationy=$((locationy-1));;     #End
+esac
+
+#Now test for out of bounds
+if [[ $locationx -gt 30 || $locationy -gt 79 || $locationx -lt 0 || $locationy -lt 0 ]]
+then
+	echo "Game over. You went off the grid."
+        read -a dummy -p "Press any key to continue."
+        Game_Over
+fi
+Get_Location_Value #update score
+
+#make a dot at current location
+start_string=${lines[$locationx]:0:$((locationy))}
+end_string=${lines[$locationx]:$((locationy+1)):79}
+lines[$locationx]=$start_string"."$end_string
+}
+
+Get_Keypress () {
+# Author: Sigurd Solaas, 20 Apr 2011
+# Stolen from ABS Guide without permission, but with apologies. Somewhat modified.
+# This was beyond my ability to figure out. Thank you, Sigurd Solaas.
+# Requires version 4.2+ of Bash. Which I hope you have.
+
+key="no value yet"    #this is very careful programming
+ unset K1 K2 K3       #this is, too
+ read -s -N1 -p "Enter direction: "
+ K1="$REPLY"
+# read -s -N2 -t 0.001
+# K2="$REPLY"
+# read -s -N1 -t 0.001
+# K3="$REPLY"
+# key="$K1$K2$K3"
+echo
+
+ # Convert the separate home-key to home-key_num_7:
+# if [ "$key" = $'\x1b\x4f\x48' ]; then
+#  key=$'\x1b\x5b\x31\x7e'
+  #   Quoted string-expansion construct. 
+# fi
+
+ # Convert the separate end-key to end-key_num_1.
+# if [ "$key" = $'\x1b\x4f\x46' ]; then
+#  key=$'\x1b\x5b\x34\x7e'
+# fi
+
+ case "$K1" in
+  u|U )  # North
+   direction="North"
+  ;;
+  d|D )  # South
+   direction="South"
+  ;;
+  r|R )  # East
+   direction="East"
+  ;;
+   l|L )  # West
+   direction="West"
+  ;;
+  n|N )  # Northwest
+   direction="Northwest"
+  ;;
+   w|W )  # Southwest
+   direction="Southwest"
+  ;;
+   e|E )  # Northeast
+   direction="Northeast"
+  ;;
+   s|S)  # Southeast
+   direction="Southeast"
+  ;;
+  q) 
+  echo "You quit? Game over!"
+  read -n 1 -s -a play -p "Press any key to continue."
+  Game_Over
+  ;;
+  h) 
+  Instructions
+  start_string=${lines[$locationx]:0:$((locationy))}
+  end_string=${lines[$locationx]:$((locationy+1)):79}
+  lines[$locationx]=$start_string$location_value$end_string
+  Draw_Grid
+  Get_Keypress     
+  ;;
+  *) 
+  echo "That is not a valid key. Press h for complete instructions."
+  Get_Keypress
+  ;;
+esac
+}
+
+
+Game_Over () {
+#scorekeeping 
+      while [ -e /usr/games/dangerstep/tmp/scores.tmp ]  #allow network play
+      do
+        sleep 1
+      done
+      cp /usr/games/dangerstep/scores.dat /usr/games/dangerstep/tmp/scores.tmp   #lock file
+      echo -e "$user\t$score" >> /usr/games/dangerstep/tmp/scores.tmp
+      sort --numeric-sort --reverse --key=2 /usr/games/dangerstep/tmp/scores.tmp > /usr/games/dangerstep/scores.dat
+      rm /usr/games/dangerstep/tmp/scores.tmp
+
+clear
+echo "End of game." 
+echo "Dangerstep is copyright 2020 by Eric Weir. It is based on a DOS game called 'Madness' that was available in the 1990s." 
+echo "No reasonable request for a copy of the code for personal use will be refused, with the condition that Eric Weir, the author, is credited."
+echo "Commercial use prohibited."
+echo
+echo "Here are the top 20 scores:" # Use printf as in hangman
+echo
+#echo -e "User\tScore"
+printf "%-20.20s" "User" "Score";  printf "%b" "\n"
+IFS=$'\012';lines=( $(</usr/games/dangerstep/scores.dat) )
+unset IFS
+num=${#lines[@]}
+if [[ $num -gt 20 ]]
+then
+num=20
+fi
+for ((x=0;x<=$num;x++))
+do
+line=( ${lines[$x]} )
+printf "%-20.20s" "${line[0]}" "${line[1]}";  printf "%b" "\n"
+done
+
+#head -20 /usr/games/dangerstep/scores.dat # only top 20 scores
+      read -n 1 -a play -p "Play again? You can play again by pressing y for yes. "
+      if [ "$play" = "y" ] || [ "$play" = "Y" ]
+      then
+        exec $0
+      else
+	exit
+      fi
+}
+
+#################################
+#end of functions. Main routine.#
+#################################
+user=$(echo $USER)
+Instructions
+Make_Grid
+locationx=15
+locationy=40
+Get_Location_Value  #starting score
+moves=0
+Draw_Grid
+
+#looping here, player chooses direction
+while true
+do
+Get_Keypress
+Make_Move
+moves=$location_value
+#move is completed
+
+moves=$((moves-1)) # You already moved once
+while [ $moves -gt 0 ]
+do
+Make_Move
+moves=$((moves-1))
+done
+Draw_Grid
+done
+
